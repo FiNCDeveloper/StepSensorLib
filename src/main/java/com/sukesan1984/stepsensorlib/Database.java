@@ -5,10 +5,14 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.support.annotation.NonNull;
 
+import com.sukesan1984.stepsensorlib.model.ChunkedStepCount;
 import com.sukesan1984.stepsensorlib.util.DateUtils;
 import com.sukesan1984.stepsensorlib.util.Logger;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -111,7 +115,6 @@ public class Database extends SQLiteOpenHelper {
      * Inserts a new entry in the database, if there is no entry for the given
      * dateAndHour yet.
      * <p/>
-     * To restore data from a backup, use {@link #insertDayAndHourFromBackup}
      *
      * @param dateAndHour the dateAndHour in ms since 1970
      * @param steps       the current step value
@@ -245,5 +248,42 @@ public class Database extends SQLiteOpenHelper {
 
     public int getTodayStep() {
         return getSteps(DateUtils.getStartOfToday(), DateUtils.getCurrentTimeMllis());
+    }
+
+    @NonNull
+    public List<ChunkedStepCount> getNotRecordedChunkedStepCounts() {
+        Cursor c = getReadableDatabase().query(TABLE_NAME, new String[]{"date_and_hour", "steps"},
+                "date_and_hour != ? and is_recorded_on_server = ?", new String[]{"-1", "0"}, null, null, null);
+
+        List<ChunkedStepCount> lists = new ArrayList<>();
+
+        if (c.getCount() == 0) {
+            return lists;
+        }
+        while (c.moveToNext()) {
+            lists.add(new ChunkedStepCount(c.getLong(0), c.getInt(1)));
+        }
+        c.close();
+        return lists;
+    }
+
+    public void updateToRecorded(long[] dateAndHours) {
+        ContentValues values = new ContentValues();
+        values.put("is_recorded_on_server", "1");
+        int length = dateAndHours.length;
+        String args = "";
+        String[] dateAndHoursString = new String[length];
+        for (int i = 0; i < length; i++) {
+            if (i == 0) {
+                args = "?";
+            } else {
+                args += ", ?";
+            }
+            dateAndHoursString[i] = String.valueOf(dateAndHours[i]);
+        }
+        SQLiteDatabase db = getWritableDatabase();
+        db.update(TABLE_NAME, values, String.format("date_and_hour in (%s)", args), dateAndHoursString);
+        db.close();
+        return;
     }
 }
