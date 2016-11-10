@@ -218,6 +218,7 @@ public class Database extends SQLiteOpenHelper {
      * @return
      */
     public int getSteps(final long dateAndHour) {
+        Logger.log("getStep dateAndHour" + dateAndHour);
         Cursor c = getByDateAndHour(dateAndHour);
 
         c.moveToFirst();
@@ -314,6 +315,7 @@ public class Database extends SQLiteOpenHelper {
     }
 
     public int getTodayStep() {
+        Logger.log("getTodayStep");
         return getSteps(DateUtils.getStartOfToday(), DateUtils.getCurrentTimeMllis());
     }
 
