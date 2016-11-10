@@ -21,6 +21,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class Database extends SQLiteOpenHelper {
     private final static String TABLE_NAME = "steps";
+    private final static String COLUMN_DATE_AND_HOUR = "date_and_hour";
+    private final static String COLUMN_STEPS = "steps";
+    private final static String COLUMN_IS_RECORDED_ON_SERVER = "is_recorded_on_server";
+    private final static String COLUMN_LAST_UPDATED = "last_updated";
     private final static int DB_VERSION = 1;
 
     private static Database instance;
@@ -49,7 +53,20 @@ public class Database extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        db.execSQL("CREATE TABLE " + TABLE_NAME + " (date_and_hour INTEGER UNIQUE, steps INTEGER, is_recorded_on_server INTEGER default 0, last_updated INTEGER)");
+        db.execSQL("CREATE TABLE " + TABLE_NAME + " (" +
+                COLUMN_DATE_AND_HOUR + " INTEGER UNIQUE, " +
+                COLUMN_STEPS + " INTEGER, " +
+                COLUMN_IS_RECORDED_ON_SERVER + " INTEGER default 0, " +
+                COLUMN_LAST_UPDATED + " INTEGER);");
+    }
+
+    /**
+     * delete all
+     */
+    public void deleteAll() {
+        SQLiteDatabase db = getWritableDatabase();
+        db.delete(TABLE_NAME, "", new String[]{});
+        db.close();
     }
 
     @Override
@@ -91,9 +108,7 @@ public class Database extends SQLiteOpenHelper {
     }
 
     public void updateOrInsertWithoutTransaction(SQLiteDatabase db, long dateAndHour, int stepsSinceBoot) {
-        Cursor c = getReadableDatabase().query(TABLE_NAME, new String[]{"date_and_hour"},
-                "date_and_hour = ?",
-                new String[]{String.valueOf(dateAndHour)}, null, null, null);
+        Cursor c = getByDateAndHour(dateAndHour);
         initializeLastUpdatedSteps(db, stepsSinceBoot);
         int lastUpdatedSteps = getLastUpdatedSteps();
         if (lastUpdatedSteps > stepsSinceBoot) {
@@ -112,6 +127,42 @@ public class Database extends SQLiteOpenHelper {
     }
 
     /**
+     * replace steps count if steps is larger than current databace value.
+     *
+     * @param dateAndHour
+     * @param steps
+     */
+    public void insertOrReplaceSteps(final long dateAndHour, final int steps) {
+        SQLiteDatabase db = getWritableDatabase();
+        Cursor c = getByDateAndHour(dateAndHour);
+        db.beginTransaction();
+        try {
+            if (c.getCount() == 0) {
+                if (steps > 0) {
+                    insertNewDateAndHour(db, dateAndHour, steps);
+                } else {
+                    return;
+                }
+            } else if (c.moveToFirst() && c.getInt(0) < steps) {
+                Logger.log("#### update");
+                Logger.log("#### data_and_hour: " + dateAndHour);
+                Logger.log("#### steps: " + steps);
+                ContentValues values = new ContentValues();
+                values.put(COLUMN_DATE_AND_HOUR, dateAndHour);
+                values.put(COLUMN_STEPS, steps);
+                values.put(COLUMN_LAST_UPDATED, DateUtils.getCurrentTimeMllis());
+                db.update(TABLE_NAME, values,
+                        COLUMN_DATE_AND_HOUR + " = ?",
+                        new String[]{String.valueOf(dateAndHour)});
+            }
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+
+    }
+
+    /**
      * Inserts a new entry in the database, if there is no entry for the given
      * dateAndHour yet.
      * <p/>
@@ -120,12 +171,15 @@ public class Database extends SQLiteOpenHelper {
      * @param steps       the current step value
      */
 
-    private void insertNewDateAndHour(SQLiteDatabase db, long dateAndHour, int steps) {
+    private void insertNewDateAndHour(SQLiteDatabase db, final long dateAndHour, final int steps) {
+        Logger.log("insert new date and hour");
+        Logger.log("date_and_hour: " + dateAndHour);
+        Logger.log("steps: " + steps);
         ContentValues values = new ContentValues();
-        values.put("date_and_hour", dateAndHour);
+        values.put(COLUMN_DATE_AND_HOUR, dateAndHour);
         // use the negative steps as offset
-        values.put("steps", steps);
-        values.put("last_updated", DateUtils.getCurrentTimeMllis());
+        values.put(COLUMN_STEPS, steps);
+        values.put(COLUMN_LAST_UPDATED, DateUtils.getCurrentTimeMllis());
         db.insert(TABLE_NAME, null, values);
         if (BuildConfig.DEBUG) {
             Logger.log("insertDayAndHour" + dateAndHour + " / " + steps);
@@ -133,10 +187,17 @@ public class Database extends SQLiteOpenHelper {
         }
     }
 
+    private Cursor getByDateAndHour(long dateAndHour) {
+        return getReadableDatabase().query(TABLE_NAME, new String[]{COLUMN_STEPS},
+                COLUMN_DATE_AND_HOUR + " = ?",
+                new String[]{String.valueOf(dateAndHour)}, null, null, null);
+    }
+
     private void addToLastEntry(SQLiteDatabase db, int steps) {
         if (steps > 0) {
-            db.execSQL("UPDATE " + TABLE_NAME + " SET steps = steps + " + steps
-                    + ", last_updated =" + DateUtils.getCurrentTimeMllis() + " WHERE date_and_hour = (SELECT MAX(date_and_hour) FROM " + TABLE_NAME + ")");
+            db.execSQL("UPDATE " + TABLE_NAME + " SET " + COLUMN_STEPS + " = " + COLUMN_STEPS + " + " + steps
+                    + ", " + COLUMN_IS_RECORDED_ON_SERVER + " = 0, " + COLUMN_LAST_UPDATED + " =" + DateUtils.getCurrentTimeMllis() +
+                    " WHERE " + COLUMN_DATE_AND_HOUR + "= (SELECT MAX(" + COLUMN_DATE_AND_HOUR + ") FROM " + TABLE_NAME + ");");
         }
     }
 
@@ -146,7 +207,7 @@ public class Database extends SQLiteOpenHelper {
     public void logState() {
         if (BuildConfig.DEBUG) {
             Cursor c = getReadableDatabase()
-                    .query(TABLE_NAME, null, null, null, null, null, "date_and_hour DESC", null);
+                    .query(TABLE_NAME, null, null, null, null, null, COLUMN_DATE_AND_HOUR + " DESC", null);
             Logger.log(c);
             c.close();
         }
@@ -157,9 +218,7 @@ public class Database extends SQLiteOpenHelper {
      * @return
      */
     public int getSteps(final long dateAndHour) {
-        Cursor c = getReadableDatabase().query(TABLE_NAME, new String[]{"steps"},
-                "date_and_hour = ?", new String[]{String.valueOf(dateAndHour)},
-                null, null, null);
+        Cursor c = getByDateAndHour(dateAndHour);
 
         c.moveToFirst();
         int steps;
@@ -174,8 +233,9 @@ public class Database extends SQLiteOpenHelper {
 
     public int getSteps(final long start, final long end) {
         Cursor c = getReadableDatabase()
-                .query(TABLE_NAME, new String[]{"SUM(steps)"},
-                        "date_and_hour >= ? AND date_and_hour <= ?",
+                .query(TABLE_NAME, new String[]{"SUM(" + COLUMN_STEPS + ")"},
+                        COLUMN_DATE_AND_HOUR + " >= ? AND " +
+                                COLUMN_DATE_AND_HOUR + " <= ?",
                         new String[]{String.valueOf(start), String.valueOf(end)}, null, null, null);
         int sumSteps;
         if (c.getCount() == 0) {
@@ -188,6 +248,13 @@ public class Database extends SQLiteOpenHelper {
         return sumSteps;
     }
 
+    public List<ChunkedStepCount> getChunkStepsFrom(final long start) {
+        Cursor c = getReadableDatabase()
+                .query(TABLE_NAME, new String[]{COLUMN_DATE_AND_HOUR, COLUMN_STEPS},
+                        COLUMN_DATE_AND_HOUR + " >= ?", new String[]{String.valueOf(start)}, null, null, null);
+        return createChunkedStepCounts(c);
+    }
+
     /**
      * Removes all entries with negative values.
      * <p/>
@@ -195,7 +262,7 @@ public class Database extends SQLiteOpenHelper {
      * day as the current offset is likely to be negative.
      */
     void removeNegativeEntries() {
-        getWritableDatabase().delete(TABLE_NAME, "steps < ?", new String[]{"0"});
+        getWritableDatabase().delete(TABLE_NAME, COLUMN_STEPS + " < ?", new String[]{"0"});
     }
 
     /**
@@ -203,13 +270,13 @@ public class Database extends SQLiteOpenHelper {
      * Currently, an invalid input is such with steps >= 200,000
      */
     public void removeInvalidEntries() {
-        getWritableDatabase().delete(TABLE_NAME, "steps >= ?", new String[]{"200000"});
+        getWritableDatabase().delete(TABLE_NAME, COLUMN_STEPS + " >= ?", new String[]{"200000"});
     }
 
     /**
      * @param stepsSinceBoot steps after boot.
      */
-    public void resetLastUpdatedSteps(int stepsSinceBoot) {
+    public void resetLastUpdatedSteps(final int stepsSinceBoot) {
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
         try {
@@ -221,19 +288,19 @@ public class Database extends SQLiteOpenHelper {
         }
     }
 
-    private void initializeLastUpdatedSteps(SQLiteDatabase db, int stepsSinceBoot) {
+    private void initializeLastUpdatedSteps(SQLiteDatabase db, final int stepsSinceBoot) {
         // initialize if there is no date
         if (getSteps(-1) == Integer.MIN_VALUE) {
             saveLastUpdatedSteps(db, stepsSinceBoot);
         }
     }
 
-    private void saveLastUpdatedSteps(SQLiteDatabase db, int steps) {
+    private void saveLastUpdatedSteps(SQLiteDatabase db, final int steps) {
         ContentValues values = new ContentValues();
-        values.put("steps", steps);
-        if (db.update(TABLE_NAME, values, "date_and_hour = -1", null) == 0) {
-            values.put("date_and_hour", -1);
-            values.put("last_updated", DateUtils.getCurrentTimeMllis());
+        values.put(COLUMN_STEPS, steps);
+        if (db.update(TABLE_NAME, values, COLUMN_DATE_AND_HOUR + " = -1", null) == 0) {
+            values.put(COLUMN_DATE_AND_HOUR, -1);
+            values.put(COLUMN_LAST_UPDATED, DateUtils.getCurrentTimeMllis());
             db.insert(TABLE_NAME, null, values);
         }
         if (BuildConfig.DEBUG) {
@@ -252,9 +319,15 @@ public class Database extends SQLiteOpenHelper {
 
     @NonNull
     public List<ChunkedStepCount> getNotRecordedChunkedStepCounts() {
-        Cursor c = getReadableDatabase().query(TABLE_NAME, new String[]{"date_and_hour", "steps"},
-                "date_and_hour != ? and is_recorded_on_server = ?", new String[]{"-1", "0"}, null, null, null);
+        Cursor c = getReadableDatabase()
+                .query(TABLE_NAME, new String[]{COLUMN_DATE_AND_HOUR, COLUMN_STEPS},
+                        COLUMN_DATE_AND_HOUR + " != ? and " +
+                                COLUMN_IS_RECORDED_ON_SERVER + " = ?", new String[]{"-1", "0"}, null, null, null);
+        Logger.log("Not recoreded Chunk Size: " + c.getCount());
+        return createChunkedStepCounts(c);
+    }
 
+    private List<ChunkedStepCount> createChunkedStepCounts(Cursor c) {
         List<ChunkedStepCount> lists = new ArrayList<>();
 
         if (c.getCount() == 0) {
@@ -269,7 +342,7 @@ public class Database extends SQLiteOpenHelper {
 
     public void updateToRecorded(long[] dateAndHours) {
         ContentValues values = new ContentValues();
-        values.put("is_recorded_on_server", "1");
+        values.put(COLUMN_IS_RECORDED_ON_SERVER, "1");
         int length = dateAndHours.length;
         String args = "";
         String[] dateAndHoursString = new String[length];
@@ -279,10 +352,11 @@ public class Database extends SQLiteOpenHelper {
             } else {
                 args += ", ?";
             }
-            dateAndHoursString[i] = String.valueOf(dateAndHours[i]);
         }
         SQLiteDatabase db = getWritableDatabase();
-        db.update(TABLE_NAME, values, String.format("date_and_hour in (%s)", args), dateAndHoursString);
+        db.update(TABLE_NAME, values, String.format(COLUMN_DATE_AND_HOUR + " in (%s)", args), dateAndHoursString);
+
+        Logger.log("update to Recorded: " + dateAndHoursString.toString());
         db.close();
         return;
     }
