@@ -5,22 +5,23 @@
         android:allowBackup="true"
         android:label="@string/app_name"
         android:supportsRtl="true">
+        <service
+            android:name=".util.SensorListener"
+            android:exported="true" />
+
+        <receiver android:name=".BootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+        <receiver android:name=".ShutdownReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.ACTION_SHUTDOWN" />
+                <action android:name="com.sukesan1984.ACTION_SHUTDOWN" />
+            </intent-filter>
+        </receiver>
 
     </application>
-
-    <service android:name=".util.SensorListener" />
-
-    <receiver android:name=".BootReceiver">
-        <intent-filter>
-            <action android:name="android.intent.action.BOOT_COMPLETED" />
-        </intent-filter>
-    </receiver>
-    <receiver android:name=".ShutdownReceiver">
-        <intent-filter>
-            <action android:name="android.intent.action.ACTION_SHUTDOWN" />
-            <action android:name="com.sukesan1984.ACTION_SHUTDOWN" />
-        </intent-filter>
-    </receiver>
 
 
 </manifest>
