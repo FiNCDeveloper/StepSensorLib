@@ -12,6 +12,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
+import android.util.Log;
 
 import com.sukesan1984.stepsensorlib.BuildConfig;
 import com.sukesan1984.stepsensorlib.Database;
@@ -72,6 +73,7 @@ public class SensorListener extends Service implements SensorEventListener {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        Log.d("Hoge", "################################## onStartCommand");
         if (intent != null && ACTION_PAUSE.equals(intent.getStringExtra("action"))) {
             if (BuildConfig.DEBUG) {
                 Logger.log("onStartCommand action: " + intent.getStringExtra("action"));

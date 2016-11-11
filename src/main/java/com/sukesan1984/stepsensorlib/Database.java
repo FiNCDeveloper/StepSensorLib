@@ -354,9 +354,18 @@ public class Database extends SQLiteOpenHelper {
             } else {
                 args += ", ?";
             }
+            dateAndHoursString[i] = String.valueOf(dateAndHours[i]);
         }
         SQLiteDatabase db = getWritableDatabase();
-        db.update(TABLE_NAME, values, String.format(COLUMN_DATE_AND_HOUR + " in (%s)", args), dateAndHoursString);
+        db.beginTransaction();
+        try {
+            int rows = db.update(TABLE_NAME, values, String.format(COLUMN_DATE_AND_HOUR + " in (%s)", args), dateAndHoursString);
+            Logger.log("updated number: " + rows);
+            logState();
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
 
         Logger.log("update to Recorded: " + dateAndHoursString.toString());
         db.close();
