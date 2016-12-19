@@ -11,6 +11,7 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.IBinder;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
@@ -29,6 +30,10 @@ public class SensorListener extends Service implements SensorEventListener {
     private static boolean WAIT_FOR_VALID_STEPS = false;
 
     private final static int MICROSECONDS_IN_ONE_MINUTE = 60000000;
+
+    public static Intent createIntent(@NonNull Context context) {
+        return new Intent(context, SensorListener.class);
+    }
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
