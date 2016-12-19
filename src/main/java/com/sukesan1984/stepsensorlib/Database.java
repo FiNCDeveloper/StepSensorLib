@@ -7,7 +7,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.support.annotation.NonNull;
 
-import com.sukesan1984.stepsensorlib.model.ChunkedStepCount;
+import com.sukesan1984.stepsensorlib.model.ChunkStepCount;
 import com.sukesan1984.stepsensorlib.util.DateUtils;
 import com.sukesan1984.stepsensorlib.util.Logger;
 
@@ -249,7 +249,7 @@ public class Database extends SQLiteOpenHelper {
         return sumSteps;
     }
 
-    public List<ChunkedStepCount> getChunkStepsFrom(final long start) {
+    public List<ChunkStepCount> getChunkStepsFrom(final long start) {
         Cursor c = getReadableDatabase()
                 .query(TABLE_NAME, new String[]{COLUMN_DATE_AND_HOUR, COLUMN_STEPS},
                         COLUMN_DATE_AND_HOUR + " >= ?", new String[]{String.valueOf(start)}, null, null, null);
@@ -320,7 +320,7 @@ public class Database extends SQLiteOpenHelper {
     }
 
     @NonNull
-    public List<ChunkedStepCount> getNotRecordedChunkedStepCounts() {
+    public List<ChunkStepCount> getNotRecordedChunkedStepCounts() {
         Cursor c = getReadableDatabase()
                 .query(TABLE_NAME, new String[]{COLUMN_DATE_AND_HOUR, COLUMN_STEPS},
                         COLUMN_DATE_AND_HOUR + " != ? and " +
@@ -329,14 +329,14 @@ public class Database extends SQLiteOpenHelper {
         return createChunkedStepCounts(c);
     }
 
-    private List<ChunkedStepCount> createChunkedStepCounts(Cursor c) {
-        List<ChunkedStepCount> lists = new ArrayList<>();
+    private List<ChunkStepCount> createChunkedStepCounts(Cursor c) {
+        List<ChunkStepCount> lists = new ArrayList<>();
 
         if (c.getCount() == 0) {
             return lists;
         }
         while (c.moveToNext()) {
-            lists.add(new ChunkedStepCount(c.getLong(0), c.getInt(1)));
+            lists.add(new ChunkStepCount(c.getLong(0), c.getInt(1)));
         }
         c.close();
         return lists;

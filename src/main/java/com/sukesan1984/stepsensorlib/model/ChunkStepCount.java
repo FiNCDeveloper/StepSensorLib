@@ -2,16 +2,17 @@ package com.sukesan1984.stepsensorlib.model;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
 
 /**
  * Created by kosuketakami on 2016/11/07.
  */
 
-public class ChunkedStepCount {
+public class ChunkStepCount {
     public long unixTimeMillis;
     public int steps;
 
-    public ChunkedStepCount(long unixTimeMillis, int steps) {
+    public ChunkStepCount(long unixTimeMillis, int steps) {
         this.unixTimeMillis = unixTimeMillis;
         this.steps = steps;
     }
@@ -21,7 +22,7 @@ public class ChunkedStepCount {
      */
     public String getDayString() {
         Date date = new Date(this.unixTimeMillis);
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
         return sdf.format(date);
     }
 
@@ -30,7 +31,7 @@ public class ChunkedStepCount {
      */
     public String getHour() {
         Date date = new Date(this.unixTimeMillis);
-        SimpleDateFormat sdf = new SimpleDateFormat("HH");
+        SimpleDateFormat sdf = new SimpleDateFormat("HH", Locale.getDefault());
         return sdf.format(date);
     }
 }
