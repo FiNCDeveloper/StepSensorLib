@@ -107,7 +107,7 @@ public class Database extends SQLiteOpenHelper {
         }
     }
 
-    public void updateOrInsertWithoutTransaction(SQLiteDatabase db, long dateAndHour, int stepsSinceBoot) {
+    private void updateOrInsertWithoutTransaction(SQLiteDatabase db, long dateAndHour, int stepsSinceBoot) {
         Cursor c = getByDateAndHour(dateAndHour);
         initializeLastUpdatedSteps(db, stepsSinceBoot);
         int lastUpdatedSteps = getLastUpdatedSteps();

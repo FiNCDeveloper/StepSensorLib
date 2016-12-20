@@ -48,7 +48,7 @@ public class SensorListener extends Service implements SensorEventListener {
     public void onSensorChanged(SensorEvent event) {
         if (event.values[0] > Integer.MAX_VALUE) {
             if (BuildConfig.DEBUG) {
-                Logger.log("probably not a reaal value: " + event.values[0]);
+                Logger.log("probably not a real value: " + event.values[0]);
                 return;
             }
         } else {
