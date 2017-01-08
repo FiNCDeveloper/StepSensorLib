@@ -17,6 +17,7 @@ import android.util.Log;
 
 import com.sukesan1984.stepsensorlib.BuildConfig;
 import com.sukesan1984.stepsensorlib.Database;
+import com.sukesan1984.stepsensorlib.StepSensorFacade;
 
 /**
  * Created by kosuketakami on 2016/11/05.
@@ -168,7 +169,9 @@ public class SensorListener extends Service implements SensorEventListener {
         }
 
         // enable batching with delay of max 5min
-        sm.registerListener(this, sm.getDefaultSensor(Sensor.TYPE_STEP_COUNTER),
-                SensorManager.SENSOR_DELAY_NORMAL, 5 * MICROSECONDS_IN_ONE_MINUTE);
+        if (StepSensorFacade.isValidStepSensorDevice(this)) {
+            sm.registerListener(this, sm.getDefaultSensor(Sensor.TYPE_STEP_COUNTER),
+                    SensorManager.SENSOR_DELAY_NORMAL, 5 * MICROSECONDS_IN_ONE_MINUTE);
+        }
     }
 }
