@@ -22,8 +22,7 @@ public class ShutdownReceiver extends BroadcastReceiver {
         // broadcast might not be send. Thereforee, the app will check this
         // setting on the next boot and displays an error message if it's not
         // set to true
-        context.getSharedPreferences("pedometer", Context.MODE_PRIVATE).edit()
-                .putBoolean("correctShutdown", true).commit();
+        PreferenceManager.writeCorrectShutDown(context, true);
 
         Database db = Database.getInstance(context);
 

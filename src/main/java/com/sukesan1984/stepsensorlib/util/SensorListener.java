@@ -17,6 +17,7 @@ import android.util.Log;
 
 import com.sukesan1984.stepsensorlib.BuildConfig;
 import com.sukesan1984.stepsensorlib.Database;
+import com.sukesan1984.stepsensorlib.PreferenceManager;
 import com.sukesan1984.stepsensorlib.StepSensorFacade;
 
 /**
@@ -60,11 +61,9 @@ public class SensorListener extends Service implements SensorEventListener {
                 Database db = Database.getInstance(this);
                 db.updateOrInsert(DateUtils.getCurrentDateAndHour(), steps);
                 reRegisterSensor();
-                int difference = steps - getSharedPreferences("pedometer", Context.MODE_PRIVATE)
-                        .getInt("stepsSinceBoot", steps);
+                int difference = steps - PreferenceManager.readStepsSinceBoot(this, steps);
                 if (difference > 0) {
-                    getSharedPreferences("pedometer", Context.MODE_PRIVATE).edit()
-                            .putInt("stepsSinceBoot", steps).commit();
+                    PreferenceManager.writeStepsSinceBoot(this, steps);
                 }
                 db.close();
             }

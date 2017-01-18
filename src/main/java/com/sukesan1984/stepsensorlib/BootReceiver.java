@@ -3,7 +3,6 @@ package com.sukesan1984.stepsensorlib;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 
 import com.sukesan1984.stepsensorlib.util.DateUtils;
 import com.sukesan1984.stepsensorlib.util.Logger;
@@ -16,11 +15,9 @@ import com.sukesan1984.stepsensorlib.util.SensorListener;
 public class BootReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
-        SharedPreferences prefs = context.getSharedPreferences("pedometer", Context.MODE_PRIVATE);
-
         Database db = Database.getInstance(context);
 
-        if (!prefs.getBoolean("correctShutdown", false)) {
+        if (!PreferenceManager.readCorrectShutDown(context, false)) {
             if (BuildConfig.DEBUG) {
                 Logger.log("Incorrect shutdown");
             }
@@ -34,8 +31,9 @@ public class BootReceiver extends BroadcastReceiver {
         // row if that's the case
         db.removeNegativeEntries();
         db.close();
-        prefs.edit().remove("correctShutdown").apply();
 
+        PreferenceManager.deleteCorrectShutDown(context);
+        PreferenceManager.deleteStepsSinceBoot(context);
         context.startService(new Intent(context, SensorListener.class));
     }
 }
