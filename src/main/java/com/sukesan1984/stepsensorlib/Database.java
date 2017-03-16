@@ -4,9 +4,12 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteDatabaseLockedException;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 
+import com.crashlytics.android.Crashlytics;
 import com.sukesan1984.stepsensorlib.model.ChunkStepCount;
 import com.sukesan1984.stepsensorlib.util.DateUtils;
 import com.sukesan1984.stepsensorlib.util.Logger;
@@ -26,26 +29,34 @@ public class Database extends SQLiteOpenHelper {
     private final static String COLUMN_IS_RECORDED_ON_SERVER = "is_recorded_on_server";
     private final static String COLUMN_LAST_UPDATED = "last_updated";
     private final static int DB_VERSION = 1;
-
-    private static Database instance;
+    private final static String LOG_TAG = "Database";
     private static final AtomicInteger openCounter = new AtomicInteger();
+    private static Database instance;
+    private final Context context;
 
     private Database(final Context context) {
         super(context, TABLE_NAME, null, DB_VERSION);
+        this.context = context;
     }
 
     public static synchronized Database getInstance(final Context c) {
         if (instance == null) {
             instance = new Database(c.getApplicationContext());
         }
-
         openCounter.incrementAndGet();
 
+
+        Crashlytics.log("----------Opening  connection----------");
+        Crashlytics.log("openCounter: " + openCounter);
+        Logger.logInCrashlytics(c);
         return instance;
     }
 
     @Override
     public void close() {
+        Crashlytics.log("----------Closing  connection----------");
+        Crashlytics.log("openCounter: " + openCounter);
+        Logger.logInCrashlytics(context);
         if (openCounter.decrementAndGet() == 0) {
             super.close();
         }
@@ -92,23 +103,45 @@ public class Database extends SQLiteOpenHelper {
                 .query(TABLE_NAME, columns, selection, selectionArgs, groupBy, having, orderBy, limit);
     }
 
+    @Override
+    public SQLiteDatabase getWritableDatabase() {
+        Crashlytics.log("------Writing in database------");
+        Logger.logInCrashlytics(context);
+        return super.getWritableDatabase();
+    }
+
+    @Override
+    public SQLiteDatabase getReadableDatabase() {
+        Crashlytics.log("------Reading from database------");
+        Logger.logInCrashlytics(context);
+        return super.getReadableDatabase();
+    }
+
     /**
      * @param dateAndHour    the dateAndHour in ms since 1970
      * @param stepsSinceBoot the steps since boot
      */
     public void updateOrInsert(long dateAndHour, int stepsSinceBoot) {
-        SQLiteDatabase db = getWritableDatabase();
-        db.beginTransaction();
         try {
-            updateOrInsertWithoutTransaction(db, dateAndHour, stepsSinceBoot);
-            db.setTransactionSuccessful();
-        } finally {
-            db.endTransaction();
+            SQLiteDatabase db = getWritableDatabase();
+            db.beginTransaction();
+            try {
+                updateOrInsertWithoutTransaction(db, dateAndHour, stepsSinceBoot);
+                db.setTransactionSuccessful();
+            } finally {
+                db.endTransaction();
+            }
+        } catch (SQLiteDatabaseLockedException | IllegalStateException e) {
+            Crashlytics.logException(e);
         }
     }
 
     private void updateOrInsertWithoutTransaction(SQLiteDatabase db, long dateAndHour, int stepsSinceBoot) {
         Cursor c = getByDateAndHour(dateAndHour);
+        //FIXME Remove this check once we know what is blocking the database.
+        if (c == null) {
+            return;
+        }
         initializeLastUpdatedSteps(db, stepsSinceBoot);
         int lastUpdatedSteps = getLastUpdatedSteps();
         if (lastUpdatedSteps > stepsSinceBoot) {
@@ -124,6 +157,7 @@ public class Database extends SQLiteOpenHelper {
             addToLastEntry(db, addedSteps);
         }
         saveLastUpdatedSteps(db, stepsSinceBoot);
+        c.close();
     }
 
     /**
@@ -135,6 +169,10 @@ public class Database extends SQLiteOpenHelper {
     public void insertOrReplaceSteps(final long dateAndHour, final int steps) {
         SQLiteDatabase db = getWritableDatabase();
         Cursor c = getByDateAndHour(dateAndHour);
+        //FIXME Remove this check once we know what is blocking the database.
+        if (c == null) {
+            return;
+        }
         db.beginTransaction();
         try {
             if (c.getCount() == 0) {
@@ -159,6 +197,7 @@ public class Database extends SQLiteOpenHelper {
         } finally {
             db.endTransaction();
         }
+        c.close();
 
     }
 
@@ -187,10 +226,16 @@ public class Database extends SQLiteOpenHelper {
         }
     }
 
+    @Nullable
     private Cursor getByDateAndHour(long dateAndHour) {
-        return getReadableDatabase().query(TABLE_NAME, new String[]{COLUMN_STEPS},
-                COLUMN_DATE_AND_HOUR + " = ?",
-                new String[]{String.valueOf(dateAndHour)}, null, null, null);
+        try {
+            return getReadableDatabase().query(TABLE_NAME, new String[]{COLUMN_STEPS},
+                    COLUMN_DATE_AND_HOUR + " = ?",
+                    new String[]{String.valueOf(dateAndHour)}, null, null, null);
+        } catch (SQLiteDatabaseLockedException | IllegalStateException e) {
+            Crashlytics.logException(e);
+            return null;
+        }
     }
 
     private void addToLastEntry(SQLiteDatabase db, int steps) {
@@ -220,7 +265,10 @@ public class Database extends SQLiteOpenHelper {
     public int getSteps(final long dateAndHour) {
         Logger.log("getStep dateAndHour" + dateAndHour);
         Cursor c = getByDateAndHour(dateAndHour);
-
+        //FIXME Remove this check once we know what is blocking the database.
+        if (c == null) {
+            return Integer.MIN_VALUE;
+        }
         c.moveToFirst();
         int steps;
         if (c.getCount() == 0) {
@@ -321,12 +369,17 @@ public class Database extends SQLiteOpenHelper {
 
     @NonNull
     public List<ChunkStepCount> getNotRecordedChunkedStepCounts() {
-        Cursor c = getReadableDatabase()
-                .query(TABLE_NAME, new String[]{COLUMN_DATE_AND_HOUR, COLUMN_STEPS},
-                        COLUMN_DATE_AND_HOUR + " != ? and " +
-                                COLUMN_IS_RECORDED_ON_SERVER + " = ?", new String[]{"-1", "0"}, null, null, null);
-        Logger.log("Not recoreded Chunk Size: " + c.getCount());
-        return createChunkedStepCounts(c);
+        try {
+            Cursor c = getReadableDatabase()
+                    .query(TABLE_NAME, new String[]{COLUMN_DATE_AND_HOUR, COLUMN_STEPS},
+                            COLUMN_DATE_AND_HOUR + " != ? and " +
+                                    COLUMN_IS_RECORDED_ON_SERVER + " = ?", new String[]{"-1", "0"}, null, null, null);
+            Logger.log("Not recoreded Chunk Size: " + c.getCount());
+            return createChunkedStepCounts(c);
+        } catch (SQLiteDatabaseLockedException | IllegalStateException e) {
+            Crashlytics.logException(e);
+            return new ArrayList<>();
+        }
     }
 
     private List<ChunkStepCount> createChunkedStepCounts(Cursor c) {
