@@ -157,6 +157,7 @@ public class Database extends SQLiteOpenHelper {
             addToLastEntry(db, addedSteps);
         }
         saveLastUpdatedSteps(db, stepsSinceBoot);
+        c.close();
     }
 
     /**
@@ -196,6 +197,7 @@ public class Database extends SQLiteOpenHelper {
         } finally {
             db.endTransaction();
         }
+        c.close();
 
     }
 
