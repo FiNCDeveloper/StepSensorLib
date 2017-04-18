@@ -151,7 +151,9 @@ public class Database extends SQLiteOpenHelper {
             SQLiteDatabase db = getWritableDatabase();
             Cursor c = getByDateAndHour(dateAndHour);
             db.beginTransaction();
-
+            if (c == null) {
+                return;
+            }
             if (c.getCount() == 0) {
                 if (steps > 0) {
                     insertNewDateAndHour(db, dateAndHour, steps);
