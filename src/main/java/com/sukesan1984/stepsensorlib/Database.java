@@ -290,8 +290,9 @@ public class Database extends SQLiteOpenHelper {
     }
 
     public int getSteps(final long start, final long end) {
+        Cursor c = null;
         try {
-            Cursor c = getReadableDatabase()
+            c = getReadableDatabase()
                     .query(TABLE_NAME, new String[]{"SUM(" + COLUMN_STEPS + ")"},
                             COLUMN_DATE_AND_HOUR + " >= ? AND " +
                                     COLUMN_DATE_AND_HOUR + " <= ?",
