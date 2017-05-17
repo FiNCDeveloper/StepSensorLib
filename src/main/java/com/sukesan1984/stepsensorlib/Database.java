@@ -292,14 +292,14 @@ public class Database extends SQLiteOpenHelper {
     public int getSteps(final long start, final long end) {
         Cursor c = null;
         try {
-            c = getReadableDatabase()
-                    .query(TABLE_NAME, new String[]{"SUM(" + COLUMN_STEPS + ")"},
-                            COLUMN_DATE_AND_HOUR + " >= ? AND " +
-                                    COLUMN_DATE_AND_HOUR + " <= ?",
-                            new String[]{String.valueOf(start), String.valueOf(end)}, null, null, null);
+            c = getReadableDatabase();
             if (c == null) {
                 return 0;
             }
+            c.query(TABLE_NAME, new String[]{"SUM(" + COLUMN_STEPS + ")"},
+                            COLUMN_DATE_AND_HOUR + " >= ? AND " +
+                                    COLUMN_DATE_AND_HOUR + " <= ?",
+                            new String[]{String.valueOf(start), String.valueOf(end)}, null, null, null);
             int sumSteps;
             if (c.getCount() == 0) {
                 sumSteps = 0;
