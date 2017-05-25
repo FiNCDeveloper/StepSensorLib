@@ -5,7 +5,6 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -13,7 +12,6 @@ import android.hardware.SensorManager;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.util.Log;
 
 import com.sukesan1984.stepsensorlib.BuildConfig;
 import com.sukesan1984.stepsensorlib.Database;
@@ -48,13 +46,14 @@ public class SensorListener extends Service implements SensorEventListener {
 
     @Override
     public void onSensorChanged(SensorEvent event) {
+        Logger.log("################################## onSensorChanged called ####################################");
         if (event.values[0] > Integer.MAX_VALUE) {
             if (BuildConfig.DEBUG) {
                 Logger.log("probably not a real value: " + event.values[0]);
-                return;
             }
         } else {
             steps = (int) event.values[0];
+            Logger.log("sensor returned steps is " + steps + " and WAIT_FOR_VALID_STEPS is " + WAIT_FOR_VALID_STEPS);
             if (WAIT_FOR_VALID_STEPS && steps > 0) {
                 Logger.log("periodically save");
                 WAIT_FOR_VALID_STEPS = false;
@@ -78,7 +77,7 @@ public class SensorListener extends Service implements SensorEventListener {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.d("Hoge", "################################## onStartCommand");
+        Logger.log("################################## onStartCommand called ####################################");
         if (intent != null && ACTION_PAUSE.equals(intent.getStringExtra("action"))) {
             if (BuildConfig.DEBUG) {
                 Logger.log("onStartCommand action: " + intent.getStringExtra("action"));
@@ -88,7 +87,6 @@ public class SensorListener extends Service implements SensorEventListener {
                 steps = db.getLastUpdatedSteps();
                 db.close();
             }
-            SharedPreferences prefs = getSharedPreferences("pedometer", Context.MODE_PRIVATE);
             ((AlarmManager) getApplicationContext().getSystemService(Context.ALARM_SERVICE))
                     .cancel(PendingIntent.getService(getApplicationContext(), 2,
                             new Intent(this, SensorListener.class),
