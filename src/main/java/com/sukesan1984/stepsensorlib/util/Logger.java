@@ -37,13 +37,24 @@ public abstract class Logger {
         if (!BuildConfig.DEBUG) return;
         c.moveToFirst();
         String title = "";
-        for (int i = 0; i < c.getColumnCount(); i++)
+        for (int i = 0; i < c.getColumnCount(); i++) {
             title += c.getColumnName(i) + "\t| ";
+        }
         log(title);
         while (!c.isAfterLast()) {
             title = "";
-            for (int i = 0; i < c.getColumnCount(); i++)
-                title += c.getString(i) + "\t| ";
+            for (int i = 0; i < c.getColumnCount(); i++) {
+                final int columnTitleLength = c.getColumnName(i).length();
+                int columnValueLength = c.getString(i).length();
+                int diffLength = columnTitleLength - columnValueLength > 0
+                        ? columnTitleLength - columnValueLength
+                        : 0;
+                String diff = "";
+                for (int diffCount = 0; diffCount < diffLength; diffCount++) {
+                    diff += " ";
+                }
+                title += c.getString(i) + diff + "\t| ";
+            }
             log(title);
             c.moveToNext();
         }
