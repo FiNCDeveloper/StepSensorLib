@@ -39,18 +39,14 @@ public class SensorListener extends Service implements SensorEventListener {
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
         // nobody knows what happens here: step value might magically decrease
         // when this method is called...
-        if (BuildConfig.DEBUG) {
-            Logger.log(sensor.getName() + " accuracy changed: " + accuracy);
-        }
+        Logger.log(sensor.getName() + " accuracy changed: " + accuracy);
     }
 
     @Override
     public void onSensorChanged(SensorEvent event) {
         Logger.log("################################## onSensorChanged called ####################################");
         if (event.values[0] > Integer.MAX_VALUE) {
-            if (BuildConfig.DEBUG) {
-                Logger.log("probably not a real value: " + event.values[0]);
-            }
+            Logger.log("probably not a real value: " + event.values[0]);
         } else {
             steps = (int) event.values[0];
             Logger.log("sensor returned steps is " + steps + " and WAIT_FOR_VALID_STEPS is " + WAIT_FOR_VALID_STEPS);
@@ -79,9 +75,7 @@ public class SensorListener extends Service implements SensorEventListener {
     public int onStartCommand(Intent intent, int flags, int startId) {
         Logger.log("################################## onStartCommand called ####################################");
         if (intent != null && ACTION_PAUSE.equals(intent.getStringExtra("action"))) {
-            if (BuildConfig.DEBUG) {
-                Logger.log("onStartCommand action: " + intent.getStringExtra("action"));
-            }
+            Logger.log("onStartCommand action: " + intent.getStringExtra("action"));
             if (steps == 0) {
                 Database db = Database.getInstance(this);
                 steps = db.getLastUpdatedSteps();
@@ -108,18 +102,14 @@ public class SensorListener extends Service implements SensorEventListener {
     @Override
     public void onCreate() {
         super.onCreate();
-        if (BuildConfig.DEBUG) {
-            Logger.log("SensorListener onCreate");
-        }
+        Logger.log("SensorListener onCreate");
         reRegisterSensor();
     }
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
         super.onTaskRemoved(rootIntent);
-        if (BuildConfig.DEBUG) {
-            Logger.log("sensor service task removed");
-        }
+        Logger.log("sensor service task removed");
 
         ((AlarmManager) getSystemService(Context.ALARM_SERVICE))
                 .set(AlarmManager.RTC, System.currentTimeMillis() + 500, PendingIntent
@@ -129,26 +119,9 @@ public class SensorListener extends Service implements SensorEventListener {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (BuildConfig.DEBUG) {
-            Logger.log("SensorListener onDestroy");
-            try {
-                SensorManager sm = (SensorManager) getSystemService(SENSOR_SERVICE);
-                sm.unregisterListener(this);
-            } catch (Exception e) {
-                if (BuildConfig.DEBUG) {
-                    Logger.log(e);
-                    e.printStackTrace();
-                }
-            }
-        }
-    }
-
-    private void reRegisterSensor() {
-        if (BuildConfig.DEBUG) {
-            Logger.log("re-register sensor listener");
-        }
-        SensorManager sm = (SensorManager) getSystemService(SENSOR_SERVICE);
+        Logger.log("SensorListener onDestroy");
         try {
+            SensorManager sm = (SensorManager) getSystemService(SENSOR_SERVICE);
             sm.unregisterListener(this);
         } catch (Exception e) {
             if (BuildConfig.DEBUG) {
@@ -156,14 +129,23 @@ public class SensorListener extends Service implements SensorEventListener {
                 e.printStackTrace();
             }
         }
+    }
 
-        if (BuildConfig.DEBUG) {
-            Logger.log("step sensors: " + sm.getSensorList(Sensor.TYPE_STEP_COUNTER).size());
-            if (sm.getSensorList(Sensor.TYPE_STEP_COUNTER).size() < 1) {
-                return;
-            }
-            Logger.log("default: " + sm.getDefaultSensor(Sensor.TYPE_STEP_COUNTER).getName());
+    private void reRegisterSensor() {
+        Logger.log("re-register sensor listener");
+        SensorManager sm = (SensorManager) getSystemService(SENSOR_SERVICE);
+        try {
+            sm.unregisterListener(this);
+        } catch (Exception e) {
+            Logger.log(e);
+            e.printStackTrace();
         }
+
+        Logger.log("step sensors: " + sm.getSensorList(Sensor.TYPE_STEP_COUNTER).size());
+        if (sm.getSensorList(Sensor.TYPE_STEP_COUNTER).size() < 1) {
+            return;
+        }
+        Logger.log("default: " + sm.getDefaultSensor(Sensor.TYPE_STEP_COUNTER).getName());
 
         // enable batching with delay of max 5min
         if (StepSensorFacade.isValidStepSensorDevice(this)) {
