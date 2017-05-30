@@ -34,7 +34,7 @@ class StepCountCoordinator {
         if (dateAndHourOfLastEvent == null) {
             dateAndHourOfLastEvent = dateAndHour;
             stepsOffset = stepsSinceBoot;
-            Log.v(TAG, "onStepSensorEvent: stepsOffset is set to " + unsavedSteps);
+            Log.v(TAG, "onStepCounterEvent: stepsOffset is set to " + stepsOffset);
             return;
         }
 
@@ -42,7 +42,7 @@ class StepCountCoordinator {
             saveSteps(context);
         }
         unsavedSteps = stepsSinceBoot - stepsOffset;
-        Log.v(TAG, "onStepSensorEvent: " + unsavedSteps);
+        Log.v(TAG, "onStepCounterEvent: " + unsavedSteps);
         dateAndHourOfLastEvent = dateAndHour;
     }
 
@@ -50,10 +50,12 @@ class StepCountCoordinator {
         if (dateAndHourOfLastEvent == null) return;
         Database database = Database.getInstance(context);
         Log.v(TAG, "saveSteps: " + unsavedSteps);
-        if (database.addSteps(dateAndHourOfLastEvent, unsavedSteps)) {
-            unsavedSteps = 0;
-        } else {
+        int newSteps = database.addSteps(dateAndHourOfLastEvent, unsavedSteps);
+        if (newSteps < 0) {
             Log.e(TAG, "Failed to save steps.");
+        } else {
+            unsavedSteps = 0;
+            stepsOffset = newSteps;
         }
         database.close();
     }

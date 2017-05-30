@@ -6,6 +6,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 
 import com.sukesan1984.stepsensorlib.model.ChunkStepCount;
 import com.sukesan1984.stepsensorlib.util.DateUtils;
@@ -88,21 +89,23 @@ class Database extends SQLiteOpenHelper {
      *
      * @param targetDateAndHour Key for table.
      * @param stepsToAdd        Count to be added.
+     * @return Total count after add, or negative value when failed.
      * @throws IllegalArgumentException if stepsToAdd is negative value.
      */
-    public boolean addSteps(long targetDateAndHour, int stepsToAdd) {
+    public int addSteps(long targetDateAndHour, int stepsToAdd) {
         if (stepsToAdd < 0) throw new IllegalArgumentException("stepsToAdd should not be negative value.");
         SQLiteDatabase db = null;
         try {
             db = getWritableDatabase();
             db.beginTransaction();
             int currentSteps = getStepsImpl(db, targetDateAndHour);
-            insertOrReplaceStepRow(db, targetDateAndHour, currentSteps + stepsToAdd, true);
+            int newSteps = currentSteps + stepsToAdd;
+            insertOrReplaceStepRow(db, targetDateAndHour, newSteps, true);
             db.setTransactionSuccessful();
-            return true;
+            return newSteps;
         } catch (Exception e) {
             e.printStackTrace();
-            return false;
+            return -1;
         } finally {
             if (db != null) {
                 db.endTransaction();
@@ -132,19 +135,17 @@ class Database extends SQLiteOpenHelper {
         Cursor c = db.query(TABLE_NAME, new String[]{COLUMN_STEPS},
                 COLUMN_DATE_AND_HOUR + " = ?",
                 new String[]{String.valueOf(dateAndHour)}, null, null, null);
-
-        if (c != null) {
-            c.moveToFirst();
-            int steps;
-            if (c.getCount() == 0) {
-                steps = Integer.MIN_VALUE;
-            } else {
-                steps = c.getInt(0);
+        try {
+            if (c == null) {
+                return 0;
             }
-            c.close();
-            return steps;
-        } else {
-            return Integer.MIN_VALUE;
+            c.moveToFirst();
+            if (c.getCount() == 0) {
+                return 0;
+            }
+            return c.getInt(0);
+        } finally {
+            closeCursor(c);
         }
     }
 
@@ -166,20 +167,18 @@ class Database extends SQLiteOpenHelper {
                 c.moveToFirst();
                 sumSteps = c.getInt(0);
             }
-            c.close();
             return sumSteps;
         } catch (Exception e) {
             e.printStackTrace();
-            if (c != null) {
-                c.close();
-            }
             return 0;
+        } finally {
+            closeCursor(c);
         }
     }
 
     @NonNull
     public List<ChunkStepCount> getChunkStepsSince(final long start) {
-        Cursor c;
+        Cursor c = null;
         try {
             c = getReadableDatabase()
                     .query(TABLE_NAME, new String[]{COLUMN_DATE_AND_HOUR, COLUMN_STEPS},
@@ -193,6 +192,8 @@ class Database extends SQLiteOpenHelper {
         } catch (Exception e) {
             e.printStackTrace();
             return new ArrayList<>();
+        } finally {
+            closeCursor(c);
         }
     }
 
@@ -236,7 +237,6 @@ class Database extends SQLiteOpenHelper {
         while (c.moveToNext()) {
             lists.add(new ChunkStepCount(c.getLong(0), c.getInt(1)));
         }
-        c.close();
         return lists;
     }
 
@@ -295,5 +295,9 @@ class Database extends SQLiteOpenHelper {
         if (chunkStepCount.steps > currentSteps) {
             insertOrReplaceStepRow(db, chunkStepCount.unixTimeMillis, chunkStepCount.steps, false);
         }
+    }
+
+    private void closeCursor(@Nullable Cursor cursor) {
+        if (cursor != null) cursor.close();
     }
 }
