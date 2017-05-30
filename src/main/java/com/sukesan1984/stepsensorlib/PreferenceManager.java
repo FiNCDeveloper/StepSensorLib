@@ -4,11 +4,8 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.support.annotation.NonNull;
 
-/**
- * Created by kosuketakami on 2017/01/16.
- */
-
-public class PreferenceManager {
+// TODO: use this for service restart
+class PreferenceManager {
     private static String PEDOMETER = "pedometer";
     private static String CORRECT_SHUTDOWN = "corretctShutdown";
     private static String STEPS_SINCE_BOOT = "stepsSinceBoot";

@@ -1,4 +1,4 @@
-package com.sukesan1984.stepsensorlib.util;
+package com.sukesan1984.stepsensorlib;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
@@ -13,25 +13,16 @@ import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
-import com.sukesan1984.stepsensorlib.BuildConfig;
-import com.sukesan1984.stepsensorlib.Database;
-import com.sukesan1984.stepsensorlib.PreferenceManager;
-import com.sukesan1984.stepsensorlib.StepSensorFacade;
-
-/**
- * Created by kosuketakami on 2016/11/05.
- */
+import com.sukesan1984.stepsensorlib.util.Logger;
 
 public class SensorListener extends Service implements SensorEventListener {
 
-    public final static String ACTION_PAUSE = "pause";
-    private static int steps;
+    private final static int MICROSECONDS_IN_ONE_MINUTE = 60 * 1000 * 1000;
 
-    private static boolean WAIT_FOR_VALID_STEPS = false;
-
-    private final static int MICROSECONDS_IN_ONE_MINUTE = 60000000;
-
-    public static Intent createIntent(@NonNull Context context) {
+    /**
+     * Start service
+     */
+    static Intent createIntent(@NonNull Context context) {
         return new Intent(context, SensorListener.class);
     }
 
@@ -46,23 +37,11 @@ public class SensorListener extends Service implements SensorEventListener {
     public void onSensorChanged(SensorEvent event) {
         Logger.log("################################## onSensorChanged called ####################################");
         if (event.values[0] > Integer.MAX_VALUE) {
-            Logger.log("probably not a real value: " + event.values[0]);
-        } else {
-            steps = (int) event.values[0];
-            Logger.log("sensor returned steps is " + steps + " and WAIT_FOR_VALID_STEPS is " + WAIT_FOR_VALID_STEPS);
-            if (WAIT_FOR_VALID_STEPS && steps > 0) {
-                Logger.log("periodically save");
-                WAIT_FOR_VALID_STEPS = false;
-                Database db = Database.getInstance(this);
-                db.updateOrInsert(DateUtils.getCurrentDateAndHour(), steps);
-                reRegisterSensor();
-                int difference = steps - PreferenceManager.readStepsSinceBoot(this, steps);
-                if (difference > 0) {
-                    PreferenceManager.writeStepsSinceBoot(this, steps);
-                }
-                db.close();
-            }
+            Logger.log("probably not a real value: " + event.values[0]); return;
         }
+
+        int stepsSinceBoot = (int) event.values[0];
+        StepCountCoordinator.getInstance().onStepCounterEvent(this, stepsSinceBoot);
     }
 
     @Nullable
@@ -74,28 +53,11 @@ public class SensorListener extends Service implements SensorEventListener {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Logger.log("################################## onStartCommand called ####################################");
-        if (intent != null && ACTION_PAUSE.equals(intent.getStringExtra("action"))) {
-            Logger.log("onStartCommand action: " + intent.getStringExtra("action"));
-            if (steps == 0) {
-                Database db = Database.getInstance(this);
-                steps = db.getLastUpdatedSteps();
-                db.close();
-            }
-            ((AlarmManager) getApplicationContext().getSystemService(Context.ALARM_SERVICE))
-                    .cancel(PendingIntent.getService(getApplicationContext(), 2,
-                            new Intent(this, SensorListener.class),
-                            PendingIntent.FLAG_UPDATE_CURRENT));
-            stopSelf();
-            return START_NOT_STICKY;
-        }
-
         // restart service every minutes get the current step count
         ((AlarmManager) getApplicationContext().getSystemService(Context.ALARM_SERVICE))
                 .set(AlarmManager.RTC, System.currentTimeMillis() + 60 * 1000,
-                        PendingIntent.getService(getApplicationContext(), 2, new Intent(this, SensorListener.class),
-                                PendingIntent.FLAG_UPDATE_CURRENT));
-        WAIT_FOR_VALID_STEPS = true;
-
+                        PendingIntent.getService(this, 2, createIntent(this), PendingIntent.FLAG_UPDATE_CURRENT));
+        StepCountCoordinator.getInstance().saveSteps(this);
         return START_STICKY;
     }
 
@@ -103,7 +65,7 @@ public class SensorListener extends Service implements SensorEventListener {
     public void onCreate() {
         super.onCreate();
         Logger.log("SensorListener onCreate");
-        reRegisterSensor();
+        registerSensor();
     }
 
     @Override
@@ -131,16 +93,9 @@ public class SensorListener extends Service implements SensorEventListener {
         }
     }
 
-    private void reRegisterSensor() {
-        Logger.log("re-register sensor listener");
+    private void registerSensor() {
+        Logger.log("register sensor listener");
         SensorManager sm = (SensorManager) getSystemService(SENSOR_SERVICE);
-        try {
-            sm.unregisterListener(this);
-        } catch (Exception e) {
-            Logger.log(e);
-            e.printStackTrace();
-        }
-
         Logger.log("step sensors: " + sm.getSensorList(Sensor.TYPE_STEP_COUNTER).size());
         if (sm.getSensorList(Sensor.TYPE_STEP_COUNTER).size() < 1) {
             return;
