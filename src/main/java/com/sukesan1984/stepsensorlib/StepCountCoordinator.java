@@ -8,7 +8,7 @@ import com.sukesan1984.stepsensorlib.util.DateUtils;
 
 class StepCountCoordinator {
     private static final String TAG = "StepCountCoordinator";
-    private static volatile StepCountCoordinator singleton;
+    private static final StepCountCoordinator singleton = new StepCountCoordinator();
 
     @Nullable
     private Long dateAndHourOfLastEvent;
@@ -16,13 +16,6 @@ class StepCountCoordinator {
     private int unsavedSteps = 0;
 
     public static StepCountCoordinator getInstance() {
-        if (singleton == null) {
-            synchronized (StepCountCoordinator.class) {
-                if (singleton == null) {
-                    singleton = new StepCountCoordinator();
-                }
-            }
-        }
         return singleton;
     }
 
