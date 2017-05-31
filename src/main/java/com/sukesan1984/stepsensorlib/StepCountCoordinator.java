@@ -47,8 +47,8 @@ class StepCountCoordinator {
         if (newSteps < 0) {
             Log.e(TAG, "Failed to save steps.");
         } else {
+            stepsOffset += unsavedSteps;
             unsavedSteps = 0;
-            stepsOffset = newSteps;
         }
         database.close();
     }
