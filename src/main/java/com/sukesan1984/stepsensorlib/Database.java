@@ -73,10 +73,6 @@ public class Database extends SQLiteOpenHelper {
             db.delete(TABLE_NAME, "", new String[]{});
         } catch (Exception e) {
             e.printStackTrace();
-        } finally {
-            if (db != null) {
-                db.close();
-            }
         }
     }
 
@@ -125,7 +121,6 @@ public class Database extends SQLiteOpenHelper {
         } finally {
             if (db != null) {
                 db.endTransaction();
-                db.close();
             }
         }
     }
@@ -170,7 +165,6 @@ public class Database extends SQLiteOpenHelper {
             db.beginTransaction();
             if (c == null) {
                 db.endTransaction();
-                db.close();
                 return;
             }
             if (c.getCount() == 0) {
@@ -201,7 +195,6 @@ public class Database extends SQLiteOpenHelper {
             }
             if (db != null) {
                 db.endTransaction();
-                db.close();
             }
         }
 
@@ -273,7 +266,6 @@ public class Database extends SQLiteOpenHelper {
     public int getSteps(final long dateAndHour) {
         Logger.log("getStep dateAndHour" + dateAndHour);
         Cursor c = getByDateAndHour(dateAndHour);
-
         if (c != null) {
             c.moveToFirst();
             int steps;
@@ -378,7 +370,6 @@ public class Database extends SQLiteOpenHelper {
         } finally {
             if (db != null) {
                 db.endTransaction();
-                db.close();
             }
         }
     }
@@ -487,7 +478,6 @@ public class Database extends SQLiteOpenHelper {
         } finally {
             if (db != null) {
                 db.endTransaction();
-                db.close();
             }
         }
     }
