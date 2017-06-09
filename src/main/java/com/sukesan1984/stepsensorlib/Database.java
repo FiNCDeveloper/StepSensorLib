@@ -70,10 +70,6 @@ class Database extends SQLiteOpenHelper {
             db.delete(TABLE_NAME, "", new String[]{});
         } catch (Exception e) {
             e.printStackTrace();
-        } finally {
-            if (db != null) {
-                db.close();
-            }
         }
     }
 
@@ -109,7 +105,6 @@ class Database extends SQLiteOpenHelper {
         } finally {
             if (db != null) {
                 db.endTransaction();
-                db.close();
             }
         }
     }
@@ -268,7 +263,6 @@ class Database extends SQLiteOpenHelper {
         } finally {
             if (db != null) {
                 db.endTransaction();
-                db.close();
             }
         }
     }
@@ -285,7 +279,6 @@ class Database extends SQLiteOpenHelper {
         } finally {
             if (db != null) {
                 db.endTransaction();
-                db.close();
             }
         }
     }
