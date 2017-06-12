@@ -41,8 +41,9 @@ class StepCountCoordinator {
 
     public synchronized void saveSteps(Context context) {
         if (dateAndHourOfLastEvent == null) return;
-        Database database = Database.getInstance(context);
         Log.v(TAG, "saveSteps: " + unsavedSteps);
+        if (unsavedSteps == 0) return;
+        Database database = Database.getInstance(context);
         int newSteps = database.addSteps(dateAndHourOfLastEvent, unsavedSteps);
         if (newSteps < 0) {
             Log.e(TAG, "Failed to save steps.");
