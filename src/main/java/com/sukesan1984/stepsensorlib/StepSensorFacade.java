@@ -25,7 +25,7 @@ public class StepSensorFacade {
                 && context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_SENSOR_STEP_COUNTER);
     }
 
-    public static void startService(Context context) {
+    public static void startServiceAndSaveData(Context context) {
         context.startService(SensorListener.createIntent(context));
     }
 
