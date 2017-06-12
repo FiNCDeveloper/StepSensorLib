@@ -34,7 +34,7 @@ public class StepSensorFacade {
     }
 
     public static void clearAllData(Context context) {
-        Database.getInstance(context).deleteAll();
+        context.startService(SensorListener.createIntentForReset(context));
     }
 
     public static void increaseByChunkStepCounts(Context context, List<ChunkStepCount> chunkStepCounts) {

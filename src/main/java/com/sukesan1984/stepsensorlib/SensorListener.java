@@ -18,12 +18,17 @@ import com.sukesan1984.stepsensorlib.util.Logger;
 public class SensorListener extends Service implements SensorEventListener {
 
     private final static int MICROSECONDS_IN_ONE_MINUTE = 60 * 1000 * 1000;
+    private final static String EXTRA_RESET_DATA = BuildConfig.APPLICATION_ID + ".ResetData";
 
     /**
-     * Start service
+     * Start service, and write unsaved data to DB.
      */
     static Intent createIntent(@NonNull Context context) {
         return new Intent(context, SensorListener.class);
+    }
+
+    public static Intent createIntentForReset(Context context) {
+        return new Intent(context, SensorListener.class).putExtra(EXTRA_RESET_DATA, true);
     }
 
     @Override
@@ -53,6 +58,15 @@ public class SensorListener extends Service implements SensorEventListener {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Logger.log("################################## onStartCommand called ####################################");
+        if (intent.getBooleanExtra(EXTRA_RESET_DATA, false)) {
+            Logger.log("Deleting all data and stopping service.");
+            unregisterSensor();
+            StepCountCoordinator.getInstance().reset();
+            Database.getInstance(this).deleteAll();
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+
         // restart service every minutes get the current step count
         ((AlarmManager) getApplicationContext().getSystemService(Context.ALARM_SERVICE))
                 .set(AlarmManager.RTC, System.currentTimeMillis() + 60 * 1000,
@@ -82,6 +96,10 @@ public class SensorListener extends Service implements SensorEventListener {
     public void onDestroy() {
         super.onDestroy();
         Logger.log("SensorListener onDestroy");
+        unregisterSensor();
+    }
+
+    private void unregisterSensor() {
         try {
             SensorManager sm = (SensorManager) getSystemService(SENSOR_SERVICE);
             sm.unregisterListener(this);

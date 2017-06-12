@@ -61,4 +61,10 @@ class StepCountCoordinator {
         }
         return Database.getInstance(context).getTodayStep() + unsavedSteps;
     }
+
+    public synchronized void reset() {
+        dateAndHourOfLastEvent = null;
+        stepsOffset = 0;
+        unsavedSteps = 0;
+    }
 }
