@@ -3,16 +3,18 @@ package com.sukesan1984.stepsensorlib;
 import android.content.Context;
 import android.support.annotation.Nullable;
 import android.util.Log;
-
 import com.sukesan1984.stepsensorlib.util.DateUtils;
 
 class StepCountCoordinator {
     private static final String TAG = "StepCountCoordinator";
     private static final StepCountCoordinator singleton = new StepCountCoordinator();
+    // https://finc.slack.com/archives/C3552EVFV/p1497343956278850
+    // https://finc.slack.com/archives/C2AFVMQ5V/p1495508346662505
+    private static final long MAX_STEPS_PER_HOUR = 18000;
 
     @Nullable
     private Long dateAndHourOfLastEvent;
-    private int stepsOffset;
+    private int lastSteps;
     private int unsavedSteps = 0;
 
     public static StepCountCoordinator getInstance() {
@@ -26,17 +28,27 @@ class StepCountCoordinator {
         long dateAndHour = DateUtils.getCurrentDateAndHour();
         if (dateAndHourOfLastEvent == null) {
             dateAndHourOfLastEvent = dateAndHour;
-            stepsOffset = stepsSinceBoot;
-            Log.v(TAG, "onStepCounterEvent: stepsOffset is set to " + stepsOffset);
+            lastSteps = stepsSinceBoot;
+            Log.v(TAG, "onStepCounterEvent: lastSteps is set to " + lastSteps);
             return;
         }
 
         if (dateAndHour != dateAndHourOfLastEvent) {
+            Log.d(TAG, "Save by hour change.");
             saveSteps(context);
         }
-        unsavedSteps = stepsSinceBoot - stepsOffset;
+
+        int increment = stepsSinceBoot - lastSteps;
+        if (increment > MAX_STEPS_PER_HOUR) {
+            Log.e(TAG, "onStepCounterEvent: Skipping steps " + increment + " exceeds limit of " + MAX_STEPS_PER_HOUR + ".");
+            lastSteps = stepsSinceBoot;
+            return;
+        }
+
+        unsavedSteps += increment;
         Log.v(TAG, "onStepCounterEvent: " + unsavedSteps);
         dateAndHourOfLastEvent = dateAndHour;
+        lastSteps = stepsSinceBoot;
     }
 
     public synchronized void saveSteps(Context context) {
@@ -48,7 +60,6 @@ class StepCountCoordinator {
         if (newSteps < 0) {
             Log.e(TAG, "Failed to save steps.");
         } else {
-            stepsOffset += unsavedSteps;
             unsavedSteps = 0;
         }
         database.close();
@@ -65,7 +76,7 @@ class StepCountCoordinator {
 
     public synchronized void reset() {
         dateAndHourOfLastEvent = null;
-        stepsOffset = 0;
+        lastSteps = 0;
         unsavedSteps = 0;
     }
 }
