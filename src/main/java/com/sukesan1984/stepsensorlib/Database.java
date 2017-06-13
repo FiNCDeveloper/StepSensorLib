@@ -25,7 +25,6 @@ class Database extends SQLiteOpenHelper {
     private final static int DB_VERSION = 2;
 
     private static Database instance;
-    private static final AtomicInteger openCounter = new AtomicInteger();
 
     private Database(final Context context) {
         super(context, TABLE_NAME, null, DB_VERSION);
@@ -35,17 +34,7 @@ class Database extends SQLiteOpenHelper {
         if (instance == null) {
             instance = new Database(c.getApplicationContext());
         }
-
-        openCounter.incrementAndGet();
-
         return instance;
-    }
-
-    @Override
-    public void close() {
-        if (openCounter.decrementAndGet() == 0) {
-            super.close();
-        }
     }
 
     @Override
@@ -206,9 +195,6 @@ class Database extends SQLiteOpenHelper {
                             COLUMN_DATE_AND_HOUR + " != ? and " +
                                     COLUMN_IS_RECORDED_ON_SERVER + " = ?", new String[]{"-1", "0"}, null, null, null);
             Logger.log("Not recoreded Chunk Size: " + c.getCount());
-            if (c == null) {
-                return new ArrayList<>();
-            }
             // cursor close is in method
             return createChunkedStepCounts(c);
         } catch (Exception e) {

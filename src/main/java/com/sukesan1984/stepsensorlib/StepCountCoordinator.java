@@ -62,7 +62,6 @@ class StepCountCoordinator {
         } else {
             unsavedSteps = 0;
         }
-        database.close();
     }
 
     public synchronized int getTodaySteps(Context context) {
