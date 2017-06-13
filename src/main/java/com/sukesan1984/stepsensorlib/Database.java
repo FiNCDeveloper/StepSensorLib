@@ -7,14 +7,11 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-
 import com.sukesan1984.stepsensorlib.model.ChunkStepCount;
 import com.sukesan1984.stepsensorlib.util.DateUtils;
 import com.sukesan1984.stepsensorlib.util.Logger;
-
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 class Database extends SQLiteOpenHelper {
     private final static String TABLE_NAME = "steps";
@@ -85,7 +82,7 @@ class Database extends SQLiteOpenHelper {
             db.beginTransaction();
             int currentSteps = getStepsImpl(db, targetDateAndHour);
             int newSteps = currentSteps + stepsToAdd;
-            insertOrReplaceStepRow(db, targetDateAndHour, newSteps, true);
+            insertOrReplaceStepRow(db, targetDateAndHour, newSteps, false);
             db.setTransactionSuccessful();
             return newSteps;
         } catch (Exception e) {
@@ -98,13 +95,13 @@ class Database extends SQLiteOpenHelper {
         }
     }
 
-    private void insertOrReplaceStepRow(SQLiteDatabase db, long dateAndHour, int steps, boolean markNotRecorded) {
+    private void insertOrReplaceStepRow(SQLiteDatabase db, long dateAndHour, int steps, @Nullable Boolean markAsRecorded) {
         ContentValues values = new ContentValues();
         values.put(COLUMN_DATE_AND_HOUR, dateAndHour);
         values.put(COLUMN_STEPS, steps);
         values.put(COLUMN_LAST_UPDATED, DateUtils.getCurrentTimeMllis());
-        if (markNotRecorded) {
-            values.put(COLUMN_IS_RECORDED_ON_SERVER, 0);
+        if (markAsRecorded != null) {
+            values.put(COLUMN_IS_RECORDED_ON_SERVER, markAsRecorded ? 1 : 0);
         }
         db.replaceOrThrow(TABLE_NAME, null, values);
     }
@@ -221,45 +218,13 @@ class Database extends SQLiteOpenHelper {
         return lists;
     }
 
-    public void updateToRecorded(List<Long> dateAndHours) {
-        SQLiteDatabase db = null;
-        try {
-            ContentValues values = new ContentValues();
-            values.put(COLUMN_IS_RECORDED_ON_SERVER, "1");
-            int length = dateAndHours.size();
-            String args = "";
-            String[] dateAndHoursString = new String[length];
-            for (int i = 0; i < length; i++) {
-                if (i == 0) {
-                    args = "?";
-                } else {
-                    args += ", ?";
-                }
-                dateAndHoursString[i] = String.valueOf(dateAndHours.get(i));
-            }
-
-            db = getWritableDatabase();
-            db.beginTransaction();
-            int rows = db.update(TABLE_NAME, values, String.format(COLUMN_DATE_AND_HOUR + " in (%s)", args), dateAndHoursString);
-            Logger.log("updated number: " + rows);
-            db.setTransactionSuccessful();
-            Logger.log("update to Recorded: " + dateAndHoursString.toString());
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            if (db != null) {
-                db.endTransaction();
-            }
-        }
-    }
-
-    public void increaseByChunkStepCounts(List<ChunkStepCount> chunkStepCounts) {
+    public void increaseByServerChunkStepCounts(List<ChunkStepCount> chunkStepCounts) {
         SQLiteDatabase db = null;
         try {
             db = getWritableDatabase();
             db.beginTransaction();
             for (ChunkStepCount chunkStepCount : chunkStepCounts) {
-                increaseByChunkStepCount(db, chunkStepCount);
+                increaseBySeverChunkStepCount(db, chunkStepCount);
             }
             db.setTransactionSuccessful();
         } finally {
@@ -269,10 +234,10 @@ class Database extends SQLiteOpenHelper {
         }
     }
 
-    private void increaseByChunkStepCount(SQLiteDatabase db, ChunkStepCount chunkStepCount) {
+    private void increaseBySeverChunkStepCount(SQLiteDatabase db, ChunkStepCount chunkStepCount) {
         int currentSteps = getStepsImpl(db, chunkStepCount.unixTimeMillis);
-        if (chunkStepCount.steps > currentSteps) {
-            insertOrReplaceStepRow(db, chunkStepCount.unixTimeMillis, chunkStepCount.steps, false);
+        if (chunkStepCount.steps >= currentSteps) {
+            insertOrReplaceStepRow(db, chunkStepCount.unixTimeMillis, chunkStepCount.steps, true);
         }
     }
 

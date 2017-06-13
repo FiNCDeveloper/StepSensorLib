@@ -41,9 +41,9 @@ public class StepSensorFacade {
         context.startService(SensorListener.createIntentForReset(context));
     }
 
-    public static void increaseByChunkStepCounts(Context context, List<ChunkStepCount> chunkStepCounts) {
+    public static void increaseByServerChunkStepCounts(Context context, List<ChunkStepCount> chunkStepCounts) {
         saveNow(context);
-        Database.getInstance(context).increaseByChunkStepCounts(chunkStepCounts);
+        Database.getInstance(context).increaseByServerChunkStepCounts(chunkStepCounts);
     }
 
     @NonNull
@@ -56,14 +56,5 @@ public class StepSensorFacade {
     public static List<ChunkStepCount> getNotRecordedChunkStepCounts(Context context) {
         saveNow(context);
         return Database.getInstance(context).getNotRecordedChunkStepCounts();
-    }
-
-    public static void markChunkStepCountsAsRecorded(Context context, List<ChunkStepCount> chunkStepCounts) {
-        saveNow(context);
-        List<Long> dateAndHours = new ArrayList<>(chunkStepCounts.size());
-        for (ChunkStepCount chunkStepCount : chunkStepCounts) {
-            dateAndHours.add(chunkStepCount.unixTimeMillis);
-        }
-        Database.getInstance(context).updateToRecorded(dateAndHours);
     }
 }
