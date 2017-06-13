@@ -52,9 +52,9 @@ public class SensorListener extends Service implements SensorEventListener {
     }
 
     @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
+    public int onStartCommand(@Nullable Intent intent, int flags, int startId) {
         Logger.log("################################## onStartCommand called ####################################");
-        if (intent.getBooleanExtra(EXTRA_RESET_DATA, false)) {
+        if (intent != null && intent.getBooleanExtra(EXTRA_RESET_DATA, false)) {
             Logger.log("Deleting all data and stopping service.");
             unregisterSensor();
             StepCountCoordinator.getInstance().reset();
