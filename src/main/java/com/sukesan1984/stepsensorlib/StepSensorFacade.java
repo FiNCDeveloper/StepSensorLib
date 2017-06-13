@@ -25,8 +25,12 @@ public class StepSensorFacade {
                 && context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_SENSOR_STEP_COUNTER);
     }
 
-    public static void startServiceAndSaveData(Context context) {
+    public static void startService(Context context) {
         context.startService(SensorListener.createIntent(context));
+    }
+
+    public static void saveNow(Context context) {
+        StepCountCoordinator.getInstance().saveSteps(context);
     }
 
     public static int getTodaySteps(Context context) {
@@ -38,20 +42,24 @@ public class StepSensorFacade {
     }
 
     public static void increaseByChunkStepCounts(Context context, List<ChunkStepCount> chunkStepCounts) {
+        saveNow(context);
         Database.getInstance(context).increaseByChunkStepCounts(chunkStepCounts);
     }
 
     @NonNull
     public static List<ChunkStepCount> getChunkStepsSince(Context context, long dateAndHour) {
+        saveNow(context);
         return Database.getInstance(context).getChunkStepsSince(dateAndHour);
     }
 
     @NonNull
     public static List<ChunkStepCount> getNotRecordedChunkStepCounts(Context context) {
+        saveNow(context);
         return Database.getInstance(context).getNotRecordedChunkStepCounts();
     }
 
     public static void markChunkStepCountsAsRecorded(Context context, List<ChunkStepCount> chunkStepCounts) {
+        saveNow(context);
         List<Long> dateAndHours = new ArrayList<>(chunkStepCounts.size());
         for (ChunkStepCount chunkStepCount : chunkStepCounts) {
             dateAndHours.add(chunkStepCount.unixTimeMillis);
