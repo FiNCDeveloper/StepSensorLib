@@ -19,6 +19,7 @@ public class SensorListener extends Service implements SensorEventListener {
 
     private final static int MICROSECONDS_IN_ONE_MINUTE = 60 * 1000 * 1000;
     private final static String EXTRA_RESET_DATA = BuildConfig.APPLICATION_ID + ".ResetData";
+    private static final int MAX_DELAY_MINUTES = 1;
 
     /**
      * Start service, and write unsaved data to DB.
@@ -40,11 +41,6 @@ public class SensorListener extends Service implements SensorEventListener {
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        Logger.log("################################## onSensorChanged called ####################################");
-        if (event.values[0] > Integer.MAX_VALUE) {
-            Logger.log("probably not a real value: " + event.values[0]); return;
-        }
-
         int stepsSinceBoot = (int) event.values[0];
         StepCountCoordinator.getInstance().onStepCounterEvent(this, stepsSinceBoot);
     }
@@ -69,7 +65,7 @@ public class SensorListener extends Service implements SensorEventListener {
 
         // restart service every minutes get the current step count
         ((AlarmManager) getApplicationContext().getSystemService(Context.ALARM_SERVICE))
-                .set(AlarmManager.RTC, System.currentTimeMillis() + 60 * 1000,
+                .set(AlarmManager.RTC, System.currentTimeMillis() + MAX_DELAY_MINUTES * 60 * 1000,
                         PendingIntent.getService(this, 2, createIntent(this), PendingIntent.FLAG_UPDATE_CURRENT));
         StepCountCoordinator.getInstance().saveSteps(this);
         return START_STICKY;
@@ -87,9 +83,10 @@ public class SensorListener extends Service implements SensorEventListener {
         super.onTaskRemoved(rootIntent);
         Logger.log("sensor service task removed");
 
+        // restart service
         ((AlarmManager) getSystemService(Context.ALARM_SERVICE))
                 .set(AlarmManager.RTC, System.currentTimeMillis() + 500, PendingIntent
-                        .getService(this, 3, new Intent(this, SensorListener.class), 0));
+                        .getService(this, 3, createIntent(this), 0));
     }
 
     @Override
@@ -123,7 +120,7 @@ public class SensorListener extends Service implements SensorEventListener {
         // enable batching with delay of max 5min
         if (StepSensorFacade.isValidStepSensorDevice(this)) {
             sm.registerListener(this, sm.getDefaultSensor(Sensor.TYPE_STEP_COUNTER),
-                    SensorManager.SENSOR_DELAY_NORMAL, 5 * MICROSECONDS_IN_ONE_MINUTE);
+                    SensorManager.SENSOR_DELAY_NORMAL, MAX_DELAY_MINUTES * MICROSECONDS_IN_ONE_MINUTE);
         }
     }
 }
