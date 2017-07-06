@@ -26,7 +26,7 @@ class StepCountCoordinator {
 
     public synchronized void onStepCounterEvent(Context context, int stepsSinceBoot) {
         if (stepsSinceBoot < 0) {
-            Log.e(TAG, "onStepCounterEvent: Oops... stepsSinceBoot is negative... This SHOULD NOT happen...");
+            Log.d(TAG, "onStepCounterEvent: Oops... stepsSinceBoot is negative... This SHOULD NOT happen...");
             return;
         }
 
@@ -45,12 +45,12 @@ class StepCountCoordinator {
 
         int increment = stepsSinceBoot - lastSteps;
         if (increment > MAX_STEPS_PER_HOUR) {
-            Log.e(TAG, "onStepCounterEvent: Skipping steps, increment " + increment + " exceeds limit of " + MAX_STEPS_PER_HOUR + ".");
+            Log.d(TAG, "onStepCounterEvent: Skipping steps, increment " + increment + " exceeds limit of " + MAX_STEPS_PER_HOUR + ".");
             lastSteps = stepsSinceBoot;
             return;
         }
         if (increment < 0) {
-            Log.e(TAG, "onStepCounterEvent: Discarding steps event, negative increment "
+            Log.d(TAG, "onStepCounterEvent: Discarding steps event, negative increment "
                     + increment + " happened! (stepsSinceBoot: " + stepsSinceBoot + ")");
             // XXX: Resetting can cause extra steps to be added if the problem is order of event is randomized.
             // But it can be sudden decrease of internal counter of sensor, then no step recorded
