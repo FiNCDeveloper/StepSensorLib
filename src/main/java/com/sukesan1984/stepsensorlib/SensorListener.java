@@ -1,6 +1,6 @@
 package com.sukesan1984.stepsensorlib;
 
-import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -10,6 +10,7 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.os.Build;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -109,7 +110,7 @@ public class SensorListener extends Service implements SensorEventListener {
         }
     }
 
-    @SuppressLint("NewApi")
+    @TargetApi(Build.VERSION_CODES.KITKAT)
     private void registerSensor() {
         Logger.log("register sensor listener");
         SensorManager sm = (SensorManager) getSystemService(SENSOR_SERVICE);
